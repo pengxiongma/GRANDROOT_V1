@@ -16,6 +16,7 @@ import AiresInfoFunctionsGRANDROOT as AiresInfo
 import GRANDRoot 
 import ROOT
 from copy import deepcopy
+import ComputeVoltageOnGRANDROOT as signal
 logging.basicConfig(level=logging.INFO)	
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
 
@@ -50,6 +51,9 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
     #The function will write two main sections: ShowerSim and EfieldSim  . Shower Sim Can Optionale Store different tables.         
     SimShowerInfo=True
     SimEfieldInfo=True 
+    ROOT.gInterpreter.ProcessLine('#include "../Event/SimEfield.h"')
+    ROOT.gInterpreter.ProcessLine('#include "../Event/SimSignal.h"')
+    ROOT.gInterpreter.ProcessLine('#include "../Event/SimShower.h"')
 
     #########################################################################################################
     #ZHAIRES Sanity Checks
@@ -106,10 +110,10 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         create_branches = False
         # Try to get the tree from the file
         try:
-          SimShower_tree = f.SimShower
+          SimShower_tree = f.SimShowerTree
         # TTree doesnt exist - create it
         except:
-          SimShower_tree = ROOT.TTree("SimShower", "SimShower")
+          SimShower_tree = ROOT.TTree("SimShowerTree", "SimShowertree")
           create_branches = True
                   
         # Setup TTree branches for SimShower
@@ -222,7 +226,7 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
     #ZHAIRES DEPENDENT
     ending_e = "/a*.trace"
     tracefiles=glob.glob(InputFolder+ending_e)
-    
+
     if(SimEfieldInfo and len(tracefiles)>0):
         #########################################################################################################################
         # Part 0: Set up the tree TODO: Discuss with Lech: Should these be functions in GRANDRoot once its mature? 
@@ -231,11 +235,30 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         create_branches = False
         #Try to get the tree from the file
         try:
-          SimEfield_tree = f.SimEfield
+          SimEfield_tree = f.SimEfieldTree
         except:
-          SimEfield_tree = ROOT.TTree("SimEfield", "SimEfield")
+          SimEfield_tree = ROOT.TTree("SimEfieldTree", "SimEfieldtree")
           create_branches = True
+
+        SimEfieldBr=ROOT.SimEfield()
+        SimSignalBr=ROOT.SimSignal()
+        SimShowerBr=ROOT.SimShower()
+        try:
+            SimuTree = f.SimuCollection
+            SimuTree.SetBranchAddress("SimEfieldBranch", SimEfieldBr)
+            SimuTree.SetBranchAddress("SimSignalBranch", SimSignalBr)
+            SimuTree.SetBranchAddress("SimShowerBranch", SimShowerBr)
+        except:
+            SimuTree = ROOT.TTree("SimuCollection", "SimuCollection")
+            #SimuTree.Branch("SimEfield", ROOT.addressof(SimEfieldBr,"SimEfield"), "SimEfield/C")
+            #SimuTree.Branch("SimSignal", ROOT.addressof(SimSignalBr, "SimSignal"), "SimSignal/C")
+            SimuTree.Branch("SimEfieldBranch", SimEfieldBr)
+            SimuTree.Branch("SimSignalBranch", SimSignalBr)
+            SimuTree.Branch("SimShowerBranch", SimShowerBr)
+        #SimEfieldBr.run_id=0
+    
       
+        print(SimuTree.GetName())
         #Create TTree branches for Sim Efield
         SimEfield=GRANDRoot.Setup_SimEfield_Branches(SimEfield_tree,create_branches)
         SimEfield_Detector=GRANDRoot.Setup_SimEfieldDetector_Branches(SimEfield_tree,create_branches)      #TODO: Decide if this goes in a separate tree, or is kept inside SimEfield
@@ -267,8 +290,8 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         # Part II: Fill SimEfield TTree	
         ############################################################################################################################ 
         #Populate what we can
-        SimEfield['run_id'][:]=RunID
-        SimEfield['evt_id'][:]=EventID        
+        SimEfield['run_id'][:]=int(RunID)
+        SimEfield['evt_id'][:]=int(EventID)
         SimEfield['field_sim'].push_back(FieldSimulator)                #TODO: Decide if this goes into the SimEfieldRun Info
         print(SimEfield['field_sim'])
         SimEfield['refractivity_model'].push_back(RefractionIndexModel) #TODO: Decide if this goes into the SimEfieldRun Info
@@ -276,6 +299,53 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         SimEfield['t_pre'][:]=TimeWindowMin                             #TODO: Decide if this goes into the SimEfieldRun Info
         SimEfield['t_post'][:]=TimeWindowMax                            #TODO: Decide if this goes into the SimEfieldRun Info  
         SimEfield['t_bin_size'][:]=TimeBinSize                          #TODO: Decide if this goes into the SimEfieldRun Info . If we want to support sims with different trace sizes, this must go here. It might be needed, its difficult (and/or inefficient) to treat all traces as the same lenght. Trace lenght depends on geometry     
+
+        print("RUN ID:.......", type(RunID), RunID)
+        SimEfieldBr.run_id = RunID
+        SimEfieldBr.evt_id = EventID        
+        SimEfieldBr.field_sim.push_back(FieldSimulator)                #TODO: Decide if this goes into the SimEfieldRun Info
+        #SimEfieldBr.refractivity_model.push_back(RefractionIndexModel) #TODO: Decide if this goes into the SimEfieldRun Info
+        SimEfieldBr.refractivity_param1=float(RefractionIndexParameters[0])    #TODO: Decide if this goes into the SimEfieldRun Info. If we want to support time or location differences in the index of refraction...probabbly keep it here
+        SimEfieldBr.refractivity_param2=float(RefractionIndexParameters[1])    #TODO: Decide if this goes into the SimEfieldRun Info. If we want to support time or location differences in the index of refraction...probabbly keep it here
+        #SimEfieldBr.refractivity_param[1]= float(RefractionIndexParameters[1])    #TODO: Decide if this goes into the SimEfieldRun Info. If we want to support time or location differences in the index of refraction...probabbly keep it here
+        SimEfieldBr.t_pre=TimeWindowMin                             #TODO: Decide if this goes into the SimEfieldRun Info
+        SimEfieldBr.t_post=TimeWindowMax                            #TODO: Decide if this goes into the SimEfieldRun Info  
+        SimEfieldBr.t_bin_size=TimeBinSize                          #TODO: Decide if this goes into the SimEfieldRun Info . If we want to support sims with different trace sizes, this must go here. It might be needed, its difficult (and/or inefficient) to treat all traces as the same lenght. Trace lenght depends on geometry     
+        print("SimEfield Branch:", SimEfieldBr.run_id, SimEfieldBr.evt_id, \
+              RefractionIndexParameters,
+              SimEfieldBr.field_sim,  SimEfieldBr.refractivity_model, SimEfieldBr.refractivity_param1,\
+              SimEfieldBr.t_pre, SimEfieldBr.t_post, SimEfieldBr.t_bin_size)
+        
+        SimShowerBr.run_id=int(RunID)
+        SimShowerBr.evt_id=int(EventID)
+        SimShowerBr.shower_type.push_back(str(Primary))       #TODO: Support multiple primaries (use a ROOT.Vector, like for the trace)
+        SimShowerBr.shower_energy=Energy
+        SimShowerBr.shower_azimuth=Azimuth
+        SimShowerBr.shower_zenith=Zenith
+        #TODO:shower_core_pos
+        SimShowerBr.rnd_seed=float(RandomSeed)
+        SimShowerBr.energy_in_neutrinos=float(EnergyInNeutrinos)
+        SimShowerBr.atmos_model.push_back(AtmosphericModel)
+        #TODO:atmos_model_param
+        SimShowerBr.magnetic_field.push_back(FieldInclination)
+        SimShowerBr.magnetic_field.push_back(FieldDeclination)
+        SimShowerBr.magnetic_field.push_back(FieldIntensity)
+        SimShowerBr.date.push_back(Date)
+        SimShowerBr.site.push_back(Site)
+        SimShowerBr.site_lat_long.push_back(float(Lat))
+        SimShowerBr.site_lat_long.push_back(float(Long))
+        SimShowerBr.ground_alt=GroundAltitude
+        SimShowerBr.prim_energy=Energy
+        SimShowerBr.prim_type.push_back(str(Primary))
+        #TODO prim_injpoint_shc						
+        SimShowerBr.prim_inj_alt_shc=InjectionAltitude
+        #TODO:prim_inj_dir_shc
+        SimShowerBr.xmax_grams=float(SlantXmax)
+        SimShowerBr.xmax_alt=float(XmaxAltitude)
+        #TODO:gh_fit_param
+        SimShowerBr.hadronic_model.push_back(HadronicModel)
+        #TODO:low_energy_model
+        SimShowerBr.cpu_time.push_back(CPUTime)
 
  
         ############################################################################################################################# 
@@ -325,17 +395,21 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 ############################################################################################################################ 
                 #Populate what we can                
                 SimEfield_Detector['det_id'].push_back(DetectorID)                
+                SimEfieldBr.Detectors_det_id.push_back(DetectorID)                
                 #
                 tmp_v = ROOT.vector("float")()
                 tmp_v.assign(ant_position)                                
                 SimEfield_Detector['det_pos_shc'].push_back(tmp_v)          #TODO: Why is tmp_v needed? cant we do push_back(tuple(antposition))?
+                SimEfieldBr.Detectors_det_pos_shc.push_back(tmp_v)          #TODO: Why is tmp_v needed? cant we do push_back(tuple(antposition))?
                 #   
                 tmp_v = ROOT.vector("string")()
                 tmp_v.push_back("ZHAireS")                                     #TODO: Set this correctly
                 SimEfield_Detector['det_type'].push_back(tmp_v)
+                SimEfieldBr.Detectors_det_type.push_back(tmp_v)
                 #
                 t0=antt[ant_number]                 
                 SimEfield_Detector['t_0'].push_back(t0)
+                SimEfieldBr.Detectors_t_0.push_back(t0)
                 #
                 #trace: TODO: this could be condenced into one line, but it needs to be benchmarked SimEfield_Detector['trace_x'].push_back(ROOT.vector("float")(efield[:,1]))
                 #
@@ -356,11 +430,41 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 tmp_trace_z  = ROOT.vector("float")()
                 tmp_trace_z.assign(efieldz)
                 SimEfield_Detector['trace_z'].push_back(tmp_trace_z)
+
+
+
+
+                tmp_trace  = ROOT.vector("TVector3")()
+                for x,y,z in zip(efieldx, efieldy, efieldz):
+                    vt = ROOT.TVector3(x,y,z)
+                    tmp_trace.push_back(vt)
+                SimEfieldBr.Detectors_trace.push_back(tmp_trace)
+
+                tpre, tpost, tbinsize = TimeWindowMin, TimeWindowMax, TimeBinSize
+                efield=np.column_stack((efieldx,efieldy,efieldz))
+                times = np.arange(tpre+t0,tpost+t0+10*tbinsize,tbinsize,)
+                times = times[0:np.shape(efield)[0]]
+                efield=np.column_stack((times,efield))
+                fs=1e9/tbinsize #in Hz
+                nu_low=1e9*0.03   #in Hz
+                nu_high=1e9*0.3   #in Hz
+                voltagex= signal.butter_bandpass_filter(efieldx,nu_low,nu_high,fs)
+                voltagey= signal.butter_bandpass_filter(efieldy,nu_low,nu_high,fs)
+                voltagez= signal.butter_bandpass_filter(efieldz,nu_low,nu_high,fs)
+                tmp_trace_vol = ROOT.vector("TVector3")()
+                for x,y,z in zip(voltagex, voltagey, voltagez):
+                    vt = ROOT.TVector3(x,y,z)
+                    tmp_trace_vol.push_back(vt)
+                SimSignalBr.Detectors_trace.push_back(tmp_trace_vol)
+
+
+
                 
 
                 #TODO: Fill p2p and hilbert amplitudes
                 #print("end anenna",ant_number)
             print("Saving SimEfield")    
+            #print((SimEfieldBr.Detectors_trace)[0][0].X())
             SimEfield_tree.Fill()
             #This is to remove the friend if it exists before
             SimEfield_tree.RemoveFriend(SimShower_tree)
@@ -369,6 +473,12 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
             # Need to remove the friend first - it was stored along the TTree in the previous Write() - otherwise AddFriend() crashes
             SimEfield_tree.AddFriend(SimShower_tree)
             SimEfield_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
+
+            SimuTree.Fill()
+            SimuTree.Write()
+
+
+
     else:
         logging.critical("no trace files found in "+InputFolder+"Skipping SimEfield") #TODO: handle this exeption more elegantl
     

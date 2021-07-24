@@ -34,14 +34,14 @@ def ComputeVoltageOnROOT(inputfilename,RunID=0,outfilename="N/A"):
       outfilehandle=ROOT.TFile(outfilename, 'UPDATE')
 
     #preparing input trees #TODO: Handle when something does not exist.
-    SimShower=infilehandle.SimShower #this gets the SimShower tree and sets the addresses
-    SimEfield=infilehandle.SimEfield #this gets the SimEfield tree and sets the addresses
+    SimShower=infilehandle.SimShowerTree #this gets the SimShower tree and sets the addresses
+    SimEfield=infilehandle.SimEfieldTree #this gets the SimEfield tree and sets the addresses
 
     NumberOfEvents=SimEfield.GetEntries() #TODO: IMPLEMENT THE FRIENDS SO THAT SIMSHOWER AND SIMEFIELD ARE SYNCHRONIZED
     logging.info("Computing Voltages for "+inputfilename+", found "+str(NumberOfEvents)+" events")
      
     #preparing SimSignal output tree #TODO: handle when it already exists. Check for SimSignalRun existance. Check for RunID consistency
-    SimSignal_tree = ROOT.TTree("SimSignal", "SimSignal")
+    SimSignal_tree = ROOT.TTree("SimSignalTree", "SimSignaltree")
       
     SimSignal=GRANDRoot.Setup_SimSignal_Branches(SimSignal_tree)
     SimSignal_Detector=GRANDRoot.Setup_SimSignalDetector_Branches(SimSignal_tree)
