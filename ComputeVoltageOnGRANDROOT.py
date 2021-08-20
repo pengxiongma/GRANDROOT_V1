@@ -157,24 +157,24 @@ def ComputeVoltageOnROOT(inputfilename,RunID=0,outfilename="N/A"):
                                                                    #TODO: Fill p2p and Hilbert things
                          
             #end for antennas
-        SimSignal_tree.Fill() #put the results in the out_event
-        
-        #End for events
-        #Add SimEfelid as Friend of SimSignal
-        #Add SimShower as Friend of SimSignal
-        # Need to remove the friend first - it was stored along the TTree in the previous Write() - otherwise AddFriend() crashes
-        SimSignal_tree.RemoveFriend(SimEfield)
-        SimSignal_tree.RemoveFriend(SimShower)
-        #Reset the Index
-        SimSignal_tree.SetTreeIndex(ROOT.nullptr)
-        #Build a new Index
-        SimSignal_tree.BuildIndex("run_id", "evt_id")
-        #Add Friends
-        SimSignal_tree.AddFriend(SimEfield)
-        SimSignal_tree.AddFriend(SimShower)
-                         
-        #Now save the tree
-        SimSignal_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
+        #SimSignal_tree.Fill() #put the results in the out_event
+        #
+        ##End for events
+        ##Add SimEfelid as Friend of SimSignal
+        ##Add SimShower as Friend of SimSignal
+        ## Need to remove the friend first - it was stored along the TTree in the previous Write() - otherwise AddFriend() crashes
+        #SimSignal_tree.RemoveFriend(SimEfield)
+        #SimSignal_tree.RemoveFriend(SimShower)
+        ##Reset the Index
+        #SimSignal_tree.SetTreeIndex(ROOT.nullptr)
+        ##Build a new Index
+        #SimSignal_tree.BuildIndex("run_id", "evt_id")
+        ##Add Friends
+        #SimSignal_tree.AddFriend(SimEfield)
+        #SimSignal_tree.AddFriend(SimShower)
+        #                 
+        ##Now save the tree
+        #SimSignal_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
     
     SimEfield.RemoveFriend(SimShower)
     print("*********ABOUT TO CLOSE")

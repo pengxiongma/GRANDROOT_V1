@@ -214,10 +214,10 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         
         print("Filling SimShower")
 
-        SimShower_tree.Fill()  #TODO:we might want to sumbit all the Fill Commands (or at least the Write comands) together at the end to ensure we write down to file complete records. # LWP: no problem for both. Also, there are options like AutoSave() etc., for writing, which we should consider
-        SimShower_tree.SetTreeIndex(ROOT.nullptr)
-        SimShower_tree.BuildIndex("run_id", "evt_id")
-        SimShower_tree.Write("", ROOT.TObject.kWriteDelete)
+#        SimShower_tree.Fill()  #TODO:we might want to sumbit all the Fill Commands (or at least the Write comands) together at the end to ensure we write down to file complete records. # LWP: no problem for both. Also, there are options like AutoSave() etc., for writing, which we should consider
+#        SimShower_tree.SetTreeIndex(ROOT.nullptr)
+#        SimShower_tree.BuildIndex("run_id", "evt_id")
+#        SimShower_tree.Write("", ROOT.TObject.kWriteDelete)
 
     #############################################################################################################################
     #	SimEfieldInfo
@@ -465,14 +465,14 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 #print("end anenna",ant_number)
             print("Saving SimEfield")    
             #print((SimEfieldBr.Detectors_trace)[0][0].X())
-            SimEfield_tree.Fill()
-            #This is to remove the friend if it exists before
-            SimEfield_tree.RemoveFriend(SimShower_tree)
-            SimEfield_tree.SetTreeIndex(ROOT.nullptr)
-            SimEfield_tree.BuildIndex("run_id", "evt_id")
-            # Need to remove the friend first - it was stored along the TTree in the previous Write() - otherwise AddFriend() crashes
-            SimEfield_tree.AddFriend(SimShower_tree)
-            SimEfield_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
+            #SimEfield_tree.Fill()
+            ##This is to remove the friend if it exists before
+            #SimEfield_tree.RemoveFriend(SimShower_tree)
+            #SimEfield_tree.SetTreeIndex(ROOT.nullptr)
+            #SimEfield_tree.BuildIndex("run_id", "evt_id")
+            ## Need to remove the friend first - it was stored along the TTree in the previous Write() - otherwise AddFriend() crashes
+            #SimEfield_tree.AddFriend(SimShower_tree)
+            #SimEfield_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
 
             SimuTree.Fill()
             SimuTree.Write()
