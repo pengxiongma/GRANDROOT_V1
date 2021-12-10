@@ -1857,7 +1857,11 @@ namespace {
     };
     static const char* includePaths[] = {
 "/home/mapx/anaconda3/envs/PyROOT/include/",
+<<<<<<< HEAD
 "/mnt/sdb2/users/m/mapx/GRAND_Detector/GRANDRoot/Event/",
+=======
+"/mnt/sdb2/users/m/mapx/MySpace/GRANDROOT_V1/Event/",
+>>>>>>> 7ef5a1a2c3119dd77a10cd05a49b2006cece7aa2
 0
     };
     static const char* fwdDeclCode = R"DICTFWDDCLS(

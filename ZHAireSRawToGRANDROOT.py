@@ -494,6 +494,19 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 times = np.arange(tpre+t0,tpost+t0+10*tbinsize,tbinsize,)
                 times = times[0:np.shape(efield)[0]]
                 efield=np.column_stack((times,efield))
+
+                SimSignalBr.run_id=int(RunID)
+                SimSignalBr.evt_id=int(EventID)
+                SignalSimulator="CompuetVoltageOnGRANDROOT"                     
+                SimSignalBr.signal_sim.push_back(SignalSimulator)
+                SimSignalBr.Detectors_det_id.push_back(DetectorID)
+                tmp_v = ROOT.vector("string")()
+                tmp_v.push_back("ZHAireS")                                     #TODO: Set this correctly
+                SimSignalBr.Detectors_det_type.push_back(tmp_v)
+                tmp_v = ROOT.vector("float")()
+                tmp_v.assign(ant_position)                                
+                SimSignalBr.Detectors_det_pos_shc.push_back(tmp_v)
+                SimSignalBr.Detectors_t_0.push_back(t0)
                 fs=1e9/tbinsize #in Hz
                 nu_low=1e9*0.03   #in Hz
                 nu_high=1e9*0.3   #in Hz

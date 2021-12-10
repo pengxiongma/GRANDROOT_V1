@@ -17,16 +17,13 @@ inputname = sys.argv[2]
 runid = int(sys.argv[3])
 eventid = int(sys.argv[4])
 
-#try:
-#    os.mkdir("./GeneratedROOT")
-#except:
-#    logging.debug("./GeneratedROOT Exists...good")
-#outputfile="./GeneratedROOT/"+outputfile
 try:
-    os.mkdir("/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton")
+    os.mkdir("./GeneratedROOT")
 except:
-    logging.debug("/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton Exists...good")
-outputfile="/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton/"+outputfile
+    logging.debug("./GeneratedROOT Exists...good")
+
+outputfile="./GeneratedROOT/"+outputfile
+
 
 #inputfolder="./example-events/event1"
 #ZHAireS2ROOT.ZHAiresRawToGRANDROOT(outputfile,0,1,inputfolder,	SimEfieldInfo=True, NLongitudinal=False, ELongitudinal=False, NlowLongitudinal=False, ElowLongitudinal=False, EdepLongitudinal=False, LateralDistribution=False, EnergyDistribution=False)
