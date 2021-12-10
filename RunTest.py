@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import sys
+import os
+import logging
 import ZHAireSRawToGRANDROOT as ZHAireS2ROOT
 import ComputeVoltageOnGRANDROOT as ComputeVoltage
 
@@ -14,6 +16,17 @@ outputfile=sys.argv[1]
 inputname = sys.argv[2] 
 runid = int(sys.argv[3])
 eventid = int(sys.argv[4])
+
+#try:
+#    os.mkdir("./GeneratedROOT")
+#except:
+#    logging.debug("./GeneratedROOT Exists...good")
+#outputfile="./GeneratedROOT/"+outputfile
+try:
+    os.mkdir("/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton")
+except:
+    logging.debug("/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton Exists...good")
+outputfile="/home/mapx/mapx/GP300_StarShape_ROOTFiles/Proton/"+outputfile
 
 #inputfolder="./example-events/event1"
 #ZHAireS2ROOT.ZHAiresRawToGRANDROOT(outputfile,0,1,inputfolder,	SimEfieldInfo=True, NLongitudinal=False, ELongitudinal=False, NlowLongitudinal=False, ElowLongitudinal=False, EdepLongitudinal=False, LateralDistribution=False, EnergyDistribution=False)

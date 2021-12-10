@@ -30,7 +30,12 @@ vector<vector<string> > Detectors_det_type;
 vector<vector<float> > Detectors_det_pos_shc  ;
 vector<float> Detectors_t_0 ;
 vector<float> Detectors_p2p  ;
-vector<vector<TVector3> > Detectors_trace;
+vector<float> Detectors_p2p_x  ;
+vector<float> Detectors_p2p_y  ;
+vector<float> Detectors_p2p_z  ;
+vector<vector<float>> Detectors_trace_x;
+vector<vector<float>> Detectors_trace_y;
+vector<vector<float>> Detectors_trace_z;
    ClassDef(SimEfield,1)
 };
 

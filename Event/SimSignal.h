@@ -24,16 +24,46 @@ class SimSignal : public TObject
 		vector<vector<float> > Detectors_det_pos_shc ;
 		vector<float> Detectors_t_0  ;
 		vector<float>  Detectors_p2p ;
-		vector<vector<TVector3> > Detectors_trace;
+		vector<vector<float>> Detectors_trace_x;
+		vector<vector<float>> Detectors_trace_y;
+		vector<vector<float>> Detectors_trace_z;
+		vector<vector<float>> Voltage_trace_x;
+		vector<vector<float>> Voltage_trace_y;
+		vector<vector<float>> Voltage_trace_z;
 
 
         vector<float> Get_T_0()
         {
         	return Detectors_t_0;
         }
-        vector<vector<TVector3>> Get_Voltage()
+        vector<float> Get_P2P()
         {
-        	return Detectors_trace;
+        	return Detectors_p2p;
+        }
+        vector<vector<float>> Get_Voltage_X()
+        {
+        	return Detectors_trace_x;
+        }
+        vector<vector<float>> Get_Voltage_Y()
+        {
+        	return Detectors_trace_y;
+        }
+        vector<vector<float>> Get_Voltage_Z()
+        {
+        	return Detectors_trace_z;
+        }
+        
+		vector<vector<float>> Get_ADC_X()
+        {
+        	return Voltage_trace_x;
+        }
+        vector<vector<float>> Get_ADC_Y()
+        {
+        	return Voltage_trace_y;
+        }
+        vector<vector<float>> Get_ADC_Z()
+        {
+        	return Voltage_trace_z;
         }
         int Get_EvtID( )
         {

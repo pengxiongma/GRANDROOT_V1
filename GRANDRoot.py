@@ -193,6 +193,7 @@ def Setup_SimEfield_Branches(tree, create_branches=True):
     # If branches are reaccessed, just set their addresses
      else:
        t.SetBranchAddress(key, val)            
+       print("SetBranchAddress:",key,val)
     return values    
     
 # Create or Set the TTree branches for SimEfield.Detector (Simulated Electric Field Detector level information)

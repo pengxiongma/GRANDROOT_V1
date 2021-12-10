@@ -5,6 +5,7 @@ import os
 import glob
 import logging
 import numpy as np
+from voltagecalculate import main_spectrum
 #import h5py
 logging.basicConfig(level=logging.DEBUG)
 #
@@ -17,6 +18,7 @@ import GRANDRoot
 import ROOT
 from copy import deepcopy
 import ComputeVoltageOnGRANDROOT as signal
+from scipy.signal import hilbert
 logging.basicConfig(level=logging.INFO)	
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
 
@@ -51,9 +53,9 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
     #The function will write two main sections: ShowerSim and EfieldSim  . Shower Sim Can Optionale Store different tables.         
     SimShowerInfo=True
     SimEfieldInfo=True 
-    ROOT.gInterpreter.ProcessLine('#include "../Event/SimEfield.h"')
-    ROOT.gInterpreter.ProcessLine('#include "../Event/SimSignal.h"')
-    ROOT.gInterpreter.ProcessLine('#include "../Event/SimShower.h"')
+    ROOT.gInterpreter.ProcessLine('#include "./Event/SimEfield.h"')
+    ROOT.gInterpreter.ProcessLine('#include "./Event/SimSignal.h"')
+    ROOT.gInterpreter.ProcessLine('#include "./Event/SimShower.h"')
 
     #########################################################################################################
     #ZHAIRES Sanity Checks
@@ -92,7 +94,7 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
     # No compresion for fast readout
     # TODO: LWP: decide on compression. ROOT uses some by default. Should we?
     #       MJT: if it is only setting a parameter, we can benchmark later
-    f.SetCompressionLevel(0)
+    f.SetCompressionLevel(1)
     
     # Check if the EventID is unique
     if not CheckIfEventIDIsUnique(EventID, f):
@@ -184,33 +186,34 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         ############################################################################################################################# 
         # Part II: Fill SimShower TTree	#TODO: Discuss with Lech: Should this be all a function in GRANDRoot once its mature? to hide all pushback and all those things? And so other people do the same?
         ############################################################################################################################  
-        SimShower['run_id'][:]=RunID
-        SimShower['evt_id'][:]=EventID
-        SimShower['shower_type'].push_back(str(Primary))       #TODO: Support multiple primaries (use a ROOT.Vector, like for the trace)
-        SimShower['shower_energy'][:]=Energy
-        SimShower['shower_azimuth'][:]=Azimuth
-        SimShower['shower_zenith'][:]=Zenith
-        #TODO:shower_core_pos
-        SimShower['rnd_seed'][:]=RandomSeed
-        SimShower['energy_in_neutrinos'][:]=EnergyInNeutrinos
-        SimShower['atmos_model'].push_back(AtmosphericModel)
-        #TODO:atmos_model_param
-        SimShower['magnetic_field'][:]=np.array([FieldInclination,FieldDeclination,FieldIntensity])
-        SimShower['date'].push_back(Date)
-        SimShower['site'].push_back(Site)
-        SimShower['site_lat_long'][:]=np.array([Lat,Long])
-        SimShower['ground_alt'][:]=GroundAltitude
-        SimShower['prim_energy'][:]=Energy
-        SimShower['prim_type'].push_back(str(Primary))
-        #TODO prim_injpoint_shc						
-        SimShower['prim_inj_alt_shc'][:]=InjectionAltitude
-        #TODO:prim_inj_dir_shc
-        SimShower['xmax_grams'][:]=SlantXmax
-        SimShower['xmax_alt'][:]=XmaxAltitude
-        #TODO:gh_fit_param
-        SimShower['hadronic_model'].push_back(HadronicModel)
-        #TODO:low_energy_model
-        SimShower['cpu_time'][:]=CPUTime
+        #SimShower['run_id'][:]=RunID
+        #SimShower['evt_id'][:]=EventID
+        #SimShower['shower_type'].push_back(str(Primary))       #TODO: Support multiple primaries (use a ROOT.Vector, like for the trace)
+        #SimShower['shower_energy'][:]=Energy
+        #SimShower['shower_azimuth'][:]=Azimuth
+        #SimShower['shower_zenith'][:]=Zenith
+        ##TODO:shower_core_pos
+        #SimShower['rnd_seed'][:]=RandomSeed
+        #SimShower['energy_in_neutrinos'][:]=EnergyInNeutrinos
+        #SimShower['atmos_model'].push_back(AtmosphericModel)
+        ##TODO:atmos_model_param
+        #SimShower['magnetic_field'][:]=np.array([FieldInclination,FieldDeclination,FieldIntensity])
+        #SimShower['date'].push_back(Date)
+        #SimShower['site'].push_back(Site)
+        #SimShower['site_lat_long'][:]=np.array([Lat,Long])
+        #SimShower['ground_alt'][:]=GroundAltitude
+        #SimShower['prim_energy'][:]=Energy
+        #SimShower['prim_type'].push_back(str(Primary))
+        ##TODO prim_injpoint_shc						
+        #SimShower['prim_inj_alt_shc'][:]=InjectionAltitude
+        ##TODO:prim_inj_dir_shc
+        #SimShower['xmax_grams'][:]=SlantXmax
+        #SimShower['xmax_alt'][:]=XmaxAltitude
+        ##TODO:gh_fit_param
+        #SimShower['xmax_pos_shc'][:]=np.array([float(XmaxX)*1000,float(XmaxY)*1000,float(XmaxZ)*1000])
+        #SimShower['hadronic_model'].push_back(HadronicModel)
+        ##TODO:low_energy_model
+        #SimShower['cpu_time'][:]=CPUTime
         
         print("Filling SimShower")
 
@@ -224,7 +227,11 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
     #############################################################################################################################
     
     #ZHAIRES DEPENDENT
-    ending_e = "/a*.trace"
+    #ending_e = "/a*.trace"
+    #ending_e = "/VoltageADC_Dec2A*.trace"
+    #ending_e = "/voc_a*_trace.txt"
+    #ending_e = "/vlna_a*_trace.txt"
+    ending_e = "/vfilter_a*_trace.txt"
     tracefiles=glob.glob(InputFolder+ending_e)
 
     if(SimEfieldInfo and len(tracefiles)>0):
@@ -244,17 +251,21 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         SimSignalBr=ROOT.SimSignal()
         SimShowerBr=ROOT.SimShower()
         try:
-            SimuTree = f.SimuCollection
-            SimuTree.SetBranchAddress("SimEfieldBranch", SimEfieldBr)
-            SimuTree.SetBranchAddress("SimSignalBranch", SimSignalBr)
+            SimuTree =   f.SimuCollection
+            EfieldTree = f.EfieldCollection
+            SignalTree = f.SignalCollection
             SimuTree.SetBranchAddress("SimShowerBranch", SimShowerBr)
+            EfieldTree.SetBranchAddress("SimEfieldBranch", SimEfieldBr)
+            SignalTree.SetBranchAddress("SimSignalBranch", SimSignalBr)
         except:
             SimuTree = ROOT.TTree("SimuCollection", "SimuCollection")
+            EfieldTree = ROOT.TTree("EfieldCollection", "EfieldCollection")
+            SignalTree = ROOT.TTree("SignalCollection", "SignalCollection")
             #SimuTree.Branch("SimEfield", ROOT.addressof(SimEfieldBr,"SimEfield"), "SimEfield/C")
             #SimuTree.Branch("SimSignal", ROOT.addressof(SimSignalBr, "SimSignal"), "SimSignal/C")
-            SimuTree.Branch("SimEfieldBranch", SimEfieldBr)
-            SimuTree.Branch("SimSignalBranch", SimSignalBr)
             SimuTree.Branch("SimShowerBranch", SimShowerBr)
+            EfieldTree.Branch("SimEfieldBranch", SimEfieldBr)
+            SignalTree.Branch("SimSignalBranch", SimSignalBr)
         #SimEfieldBr.run_id=0
     
       
@@ -342,6 +353,10 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
         #TODO:prim_inj_dir_shc
         SimShowerBr.xmax_grams=float(SlantXmax)
         SimShowerBr.xmax_alt=float(XmaxAltitude)
+        #SimShowerBr.xmax_pos_shc = [float(XmaxX)*1000,float(XmaxY)*1000,float(XmaxZ)*1000]
+        SimShowerBr.xmax_pos_shc.push_back(XmaxX*1000)
+        SimShowerBr.xmax_pos_shc.push_back(XmaxY*1000)
+        SimShowerBr.xmax_pos_shc.push_back(XmaxZ*1000)
         #TODO:gh_fit_param
         SimShowerBr.hadronic_model.push_back(HadronicModel)
         #TODO:low_energy_model
@@ -374,14 +389,21 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
 
             for ant in tracefiles:
                 #print("into antenna", ant)
+                #ant_number = int(ant.split('/')[-1].split('.trace')[0].split('a')[-1]) # index in selected antenna list. this only works if all antenna files are consecutive
+                #ant_number = int(ant.split('/')[-1].split('.trace')[0].split('A')[-1]) # index in selected antenna list. this only works if all antenna files are consecutive
+                ant_number = int(ant.split('/')[-1].split('_trace')[0].split('a')[-1]) # index in selected antenna list. this only works if all antenna files are consecutive
+                
+                #strsplit = ant.split('_')
+                #etheta, ephi = [float(v) for v in strsplit[-3:-1]]
+                #newvoltage = main_spectrum.main(etheta,ephi,ant,"")                                                                       # TODO: Check for this, and handle what hapens if it fails. Maybe there is a more elegant solution 
 
-                ant_number = int(ant.split('/')[-1].split('.trace')[0].split('a')[-1]) # index in selected antenna list. this only works if all antenna files are consecutive
-                                                                                       # TODO: Check for this, and handle what hapens if it fails. Maybe there is a more elegant solution 
+                #print("newvoltage ",newvoltage[1],newvoltage[2],newvoltage[3])
                 
                 DetectorID = ant_number                                                # TODO: set on what is detector ID. int? str?
                 ant_position=(antx[ant_number],anty[ant_number],antz[ant_number])
 
-                efield = np.loadtxt(ant,dtype='f4') #we read the electric field as a numpy array
+                #efield = np.loadtxt(ant,dtype='f4') #we read the electric field as a numpy array
+                efield = np.loadtxt(ant) #we read the electric field as a numpy array
 
                  
                 ##########################################################################################################################
@@ -394,7 +416,7 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 # Part II: Fill SimEfield Detector	TODO: Discuss with Lech: Should these be functions in GRANDRoot once its mature? 
                 ############################################################################################################################ 
                 #Populate what we can                
-                SimEfield_Detector['det_id'].push_back(DetectorID)                
+                #SimEfield_Detector['det_id'].push_back(DetectorID)                
                 SimEfieldBr.Detectors_det_id.push_back(DetectorID)                
                 #
                 tmp_v = ROOT.vector("float")()
@@ -417,28 +439,55 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 efieldx=np.array(efieldx, dtype=np.float32)
                 tmp_trace_x  = ROOT.vector("float")()
                 tmp_trace_x.assign(efieldx)
-                SimEfield_Detector['trace_x'].push_back(tmp_trace_x)
+                #SimEfield_Detector['trace_x'].push_back(tmp_trace_x)
                 #
                 efieldy=deepcopy(efield[:,2])
                 efieldy=np.array(efieldy, dtype=np.float32)
                 tmp_trace_y  = ROOT.vector("float")()
                 tmp_trace_y.assign(efieldy)
-                SimEfield_Detector['trace_y'].push_back(tmp_trace_y)
+                #SimEfield_Detector['trace_y'].push_back(tmp_trace_y)
                 #
                 efieldz=deepcopy(efield[:,3])
                 efieldz=np.array(efieldz, dtype=np.float32)
                 tmp_trace_z  = ROOT.vector("float")()
                 tmp_trace_z.assign(efieldz)
-                SimEfield_Detector['trace_z'].push_back(tmp_trace_z)
+                #SimEfield_Detector['trace_z'].push_back(tmp_trace_z)
+                SimEfieldBr.Detectors_trace_x.push_back(tmp_trace_x)
+                SimEfieldBr.Detectors_trace_y.push_back(tmp_trace_y)
+                SimEfieldBr.Detectors_trace_z.push_back(tmp_trace_z)
+
+                Eenvelopex = hilbert(efieldx)
+                Eenvelopey = hilbert(efieldy)
+                Eenvelopez = hilbert(efieldz)
+                Emax = (Eenvelopex)**2;
+                Emax = Emax + (Eenvelopey)**2
+                Emax = Emax + (Eenvelopez)**2
+                Emax2 = np.sqrt(Emax)
+                emax = np.max(Emax2)
+                emin = np.min(Emax2)
+                exp2p = emax - emin
+                Xemax = np.max(Eenvelopex)
+                Xemin = np.min(Eenvelopex)
+                Xexp2p = Xemax - Xemin
+                Yemax = np.max(Eenvelopey)
+                Yemin = np.min(Eenvelopey)
+                Yexp2p = Yemax - Yemin
+                Zemax = np.max(Eenvelopez)
+                Zemin = np.min(Eenvelopez)
+                Zexp2p = Zemax - Zemin
+                #SimEfield_Detector['p2p'].push_back(exp2p)
+                SimEfieldBr.Detectors_p2p.push_back(exp2p)
+                SimEfieldBr.Detectors_p2p_x.push_back(Xexp2p)
+                SimEfieldBr.Detectors_p2p_y.push_back(Yexp2p)
+                SimEfieldBr.Detectors_p2p_z.push_back(Zexp2p)
 
 
 
-
-                tmp_trace  = ROOT.vector("TVector3")()
-                for x,y,z in zip(efieldx, efieldy, efieldz):
-                    vt = ROOT.TVector3(x,y,z)
-                    tmp_trace.push_back(vt)
-                SimEfieldBr.Detectors_trace.push_back(tmp_trace)
+                #tmp_trace  = ROOT.vector("TVector3")()
+                #for x,y,z in zip(efieldx, efieldy, efieldz):
+                #    vt = ROOT.TVector3(x,y,z)
+                #    tmp_trace.push_back(vt)
+                #SimEfieldBr.Detectors_trace.push_back(tmp_trace)
 
                 tpre, tpost, tbinsize = TimeWindowMin, TimeWindowMax, TimeBinSize
                 efield=np.column_stack((efieldx,efieldy,efieldz))
@@ -448,14 +497,53 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
                 fs=1e9/tbinsize #in Hz
                 nu_low=1e9*0.03   #in Hz
                 nu_high=1e9*0.3   #in Hz
-                voltagex= signal.butter_bandpass_filter(efieldx,nu_low,nu_high,fs)
-                voltagey= signal.butter_bandpass_filter(efieldy,nu_low,nu_high,fs)
-                voltagez= signal.butter_bandpass_filter(efieldz,nu_low,nu_high,fs)
-                tmp_trace_vol = ROOT.vector("TVector3")()
-                for x,y,z in zip(voltagex, voltagey, voltagez):
-                    vt = ROOT.TVector3(x,y,z)
-                    tmp_trace_vol.push_back(vt)
-                SimSignalBr.Detectors_trace.push_back(tmp_trace_vol)
+                ###voltagex= signal.butter_bandpass_filter(efieldx,nu_low,nu_high,fs)
+                ###voltagey= signal.butter_bandpass_filter(efieldy,nu_low,nu_high,fs)
+                ###voltagez= signal.butter_bandpass_filter(efieldz,nu_low,nu_high,fs)
+                ###voltagex=np.array(voltagex, dtype=np.float32)
+                ###voltagey=np.array(voltagey, dtype=np.float32)
+                ###voltagez=np.array(voltagez, dtype=np.float32)
+                ###tmp_vtrace_x  = ROOT.vector("float")()
+                ###tmp_vtrace_x.assign(voltagex)
+                ###tmp_vtrace_y  = ROOT.vector("float")()
+                ###tmp_vtrace_y.assign(voltagey)
+                ###tmp_vtrace_z  = ROOT.vector("float")()
+                ###tmp_vtrace_z.assign(voltagez)
+                ###SimSignalBr.Detectors_trace_x.push_back(tmp_vtrace_x)
+                ###SimSignalBr.Detectors_trace_y.push_back(tmp_vtrace_y)
+                ###SimSignalBr.Detectors_trace_z.push_back(tmp_vtrace_z)
+                ###SimSignalBr.Detectors_det_id.push_back(DetectorID)                
+                
+                #newvoltagex=deepcopy(newvoltage[1])
+                #newvoltagey=deepcopy(newvoltage[2])
+                #newvoltagez=deepcopy(newvoltage[3])
+                #tmp_adc_x  = ROOT.vector("float")()
+                #tmp_adc_x.assign(newvoltagex)
+                #tmp_adc_y  = ROOT.vector("float")()
+                #tmp_adc_y.assign(newvoltagey)
+                #tmp_adc_z  = ROOT.vector("float")()
+                #tmp_adc_z.assign(newvoltagez)
+                #SimSignalBr.Voltage_trace_x.push_back(tmp_adc_x)
+                #SimSignalBr.Voltage_trace_y.push_back(tmp_adc_y)
+                #SimSignalBr.Voltage_trace_z.push_back(tmp_adc_z)
+                
+                ###Venvelopex = hilbert(voltagex)
+                ###Venvelopey = hilbert(voltagey)
+                ###Venvelopez = hilbert(voltagez)
+                ###Vmax=(Venvelopex)**2;
+                ###Vmax = Vmax + (Venvelopey)**2
+                ###Vmax = Vmax + (Venvelopez)**2
+                ###Vmax2 = np.sqrt(Vmax)
+                ###emax=np.max(Vmax2)
+                ###emin=np.min(Vmax2)
+                ###exp2p=emax-emin
+                ###SimSignalBr.Detectors_p2p.push_back(exp2p)
+                ###SimSignalBr.Detectors_t_0.push_back(t0)
+
+#                for x,y,z in zip(voltagex, voltagey, voltagez):
+#                    vt = ROOT.TVector3(x,y,z)
+#                    tmp_trace_vol.push_back(vt)
+#                SimSignalBr.Detectors_trace.push_back(tmp_trace_vol)
 
 
 
@@ -475,7 +563,11 @@ def ZHAiresRawToGRANDROOT(FileName, RunID, EventID, InputFolder, SimEfieldInfo=T
             #SimEfield_tree.Write("", ROOT.TObject.kWriteDelete) #this is to avoid having several copies of the tree in the index of the file
 
             SimuTree.Fill()
-            SimuTree.Write()
+            EfieldTree.Fill()
+            SignalTree.Fill()
+            SimuTree.Write("", ROOT.TObject.kWriteDelete)
+            EfieldTree.Write("", ROOT.TObject.kWriteDelete)
+            SignalTree.Write("", ROOT.TObject.kWriteDelete)
 
 
 

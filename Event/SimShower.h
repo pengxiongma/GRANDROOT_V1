@@ -38,7 +38,7 @@ class SimShower : public TObject
 		float prim_inj_alt_shc;
 		vector<float> prim_inj_dir_shc;
 		float xmax_grams;
-		vector<double> xmax_pos_shc;
+		vector<float> xmax_pos_shc;
 		double xmax_alt;
 		vector<float> gh_fit_param;
 		vector<string> hadronic_model;
@@ -79,6 +79,10 @@ class SimShower : public TObject
 		float Get_primary_Eneutrinos( )
 		{
 			return energy_in_neutrinos;
+		}
+		vector<float> Get_primary_Xmax_Pos( )
+		{
+			return xmax_pos_shc;
 		}
 
 
